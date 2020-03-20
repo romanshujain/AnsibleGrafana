@@ -1,0 +1,37 @@
+- hosts: grafana
+  tasks:
+
+    - name: ensure apt dependencies are installed
+      apt:
+        name: apt-transport-https
+        state: present
+      become: yes
+
+    - name: ensure grafana apt key is present
+      apt_key:
+        url: https://packages.grafana.com/gpg.key
+        state: present
+      become: yes
+
+    - name: ensure grafana apt repository is present
+      apt_repository:
+        repo="deb https://packages.grafana.com/enterprise/deb stable main"
+        state=present
+      become: yes
+
+    - name: ensure grafana is installed
+      apt:
+        update_cache: yes
+        name: grafana-enterprise
+        state: latest
+      become: yes
+
+    - name: configure the grafana server to start at boot
+      command:
+        cmd: systemctl enable grafana-server.service
+      become: yes
+
+    - name: start grafana server
+      command:
+        cmd: systemctl start grafana-server
+      become: yes
