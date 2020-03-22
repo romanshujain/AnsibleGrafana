@@ -1,0 +1,196 @@
+- hosts: grafana
+  tasks:
+
+    - name: create prometheus system group
+      group:
+        name: prometheus
+        system: true
+        state: present
+      become: yes
+
+    - name: create prometheus system user
+      user:
+        name: prometheus
+        system: true
+        shell: "/bin/false"
+        group: prometheus
+        createhome: false
+        home: "/var/lib/prometheus"
+      become: yes
+
+
+    - name: Create a directory if it does not exist
+      file:
+        path: /var/lib/prometheus
+        state: directory
+        mode: '0755'
+      become: yes
+
+    - name: Create a directory if it does not exist
+      file:
+        path: /etc/prometheus
+        state: directory
+        mode: '0755'
+      become: yes
+
+    - name: Recursively change ownership of a directory
+      file:
+        path: /var/lib/prometheus
+        state: directory
+        recurse: yes
+        owner: prometheus
+        group: prometheus
+      become: yes
+
+    - name: Recursively change ownership of a directory
+      file:
+        path: /etc/prometheus
+        state: directory
+        recurse: yes
+        owner: prometheus
+        group: prometheus
+      become: yes
+
+
+    - name: download prometheus binary to local folder
+      get_url:
+        url: "https://github.com/prometheus/prometheus/releases/download/v2.17.0-rc.4/prometheus-2.17.0-rc.4.linux-amd64.tar.gz"
+        dest: "/tmp/prometheus-2.17.0-rc.4.linux-amd64.tar.gz"
+
+
+
+    - name: unpack prometheus binaries
+      become: yes
+      unarchive:
+        src: /tmp/prometheus-2.17.0-rc.4.linux-amd64.tar.gz
+        dest: /tmp
+        remote_src: yes
+
+    - name: Copy file with owner and permissions
+      become: yes
+      copy:
+        src: /tmp/prometheus-2.17.0-rc.4.linux-amd64/prometheus
+        dest: /usr/local/bin
+        remote_src: yes
+        owner: prometheus
+        group: prometheus
+        mode: '0744'
+
+
+
+    - name: Copy file with owner and permissions
+      become: yes
+      copy:
+        src: /tmp/prometheus-2.17.0-rc.4.linux-amd64/promtool
+        dest: /usr/local/bin
+        remote_src: yes
+        owner: prometheus
+        group: prometheus
+        mode: '0744'
+
+    - name: Create a directory if it does not exist
+      file:
+        path: /etc/prometheus/consoles
+        state: directory
+        mode: '0755'
+      become: yes
+
+    - name: Create a directory if it does not exist
+      file:
+        path: /etc/prometheus/console_libraries
+        state: directory
+        mode: '0755'
+      become: yes
+
+
+    - name: Copy the console directory
+      become: yes
+      copy:
+        src: /tmp/prometheus-2.17.0-rc.4.linux-amd64/consoles/
+        dest: /etc/prometheus/consoles/
+        remote_src: yes
+        owner: prometheus
+        group: prometheus
+
+
+    - name: Copy the console directory
+      become: yes
+      copy:
+        src: /tmp/prometheus-2.17.0-rc.4.linux-amd64/console_libraries/
+        dest: /etc/prometheus/console_libraries/
+        remote_src: yes
+        owner: prometheus
+        group: prometheus
+
+
+#Setup Prometheus Configuration
+
+
+    - name: Copy file with owner and permissions
+      become: yes
+      copy:
+        src: /tmp/prometheus-2.17.0-rc.4.linux-amd64/prometheus.yml
+        dest: /etc/prometheus/
+        remote_src: yes
+        owner: prometheus
+        group: prometheus
+        mode: '0644'
+
+
+    - name: Create a file in not exist
+      file:
+        path: /etc/systemd/system/prometheus.service
+        owner: prometheus
+        group: prometheus
+        state: touch
+        mode: '0755'
+      become: yes
+
+    - name: add content in created file
+      become: yes
+      blockinfile:
+        path: /etc/systemd/system/prometheus.service
+        block: |
+          [Unit]
+          Description=Prometheus
+          Wants=network-online.target
+          After=network-online.target
+
+          [Service]
+          User=prometheus
+          Group=prometheus
+          Type=simple
+          ExecStart=/usr/local/bin/prometheus \
+              --config.file /etc/prometheus/prometheus.yml \
+              --storage.tsdb.path /var/lib/prometheus/ \
+              --web.console.templates=/etc/prometheus/consoles \
+              --web.console.libraries=/etc/prometheus/console_libraries
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: configure the prometheus server to start at boot
+      command:
+        cmd: systemctl daemon-reload
+      become: yes
+
+    - name: configure the prometheus server to start at boot
+      command:
+        cmd: systemctl enable prometheus
+      become: yes
+
+
+    - name: start prometheus server
+      command:
+        cmd: systemctl start prometheus
+      become: yes
+
+
+
+
+
+
+
+
+
+
