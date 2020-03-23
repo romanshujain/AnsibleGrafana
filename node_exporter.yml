@@ -1,0 +1,86 @@
+- hosts: grafana
+  tasks:
+
+    - name: create node_exporter system group
+      group:
+        name: node_exporter
+        system: true
+        state: present
+      become: yes
+
+    - name: create node_exporter system user
+      user:
+        name: node_exporter
+        system: true
+        shell: "/bin/false"
+        group: node_exporter
+      become: yes
+
+    - name: download node_exporter binary to local folder
+      get_url:
+        url: "https://github.com/prometheus/node_exporter/releases/download/v1.0.0-rc.0/node_exporter-1.0.0-rc.0.linux-amd64.tar.gz"
+        dest: "/tmp/node_exporter-1.0.0-rc.0.linux-amd64.tar.gz"
+
+
+
+    - name: unpack node_exporter binaries
+      become: yes
+      unarchive:
+        src: /tmp/node_exporter-1.0.0-rc.0.linux-amd64.tar.gz
+        dest: /tmp
+        remote_src: yes
+
+
+    - name: Copy binary file
+      become: yes
+      copy:
+        src: /tmp/node_exporter-1.0.0-rc.0.linux-amd64/node_exporter
+        dest: /usr/local/bin
+        owner: node_exporter
+        group: node_exporter
+        remote_src: yes
+        mode: '0744'
+
+
+    - name: Create a file in not exist
+      file:
+        path: /etc/systemd/system/node_exporter.service
+        owner: node_exporter
+        group: node_exporter
+        state: touch
+        mode: '0755'
+      become: yes
+
+    - name: add content in created file
+      become: yes
+      blockinfile:
+        path: /etc/systemd/system/node_exporter.service
+        block: |
+          [Unit]
+          Description=Node Exporter
+          After=network.target
+
+          [Service]
+          User=node_exporter
+          Group=node_exporter
+          Type=simple
+          ExecStart=/usr/local/bin/node_exporter
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: configure the node_exporter server to start at boot
+      command:
+        cmd: systemctl daemon-reload
+      become: yes
+
+    - name: configure the node_exporter server to start at boot
+      command:
+        cmd: systemctl enable node_exporter
+      become: yes
+
+
+    - name: start node_exporter server
+      command:
+        cmd: systemctl start node_exporter
+      become: yes
