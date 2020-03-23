@@ -1,0 +1,13 @@
+- hosts: grafana
+  tasks:
+
+    - name: Create prometheus data-source
+      become: yes
+      grafana_datasource:
+        name: prometheus-datasource
+        ds_type: prometheus
+        grafana_url: http://ec2-3-1-80-108.ap-southeast-1.compute.amazonaws.com:3000
+        state: present
+        ds_url: http://ec2-3-1-80-108.ap-southeast-1.compute.amazonaws.com:9090
+        url_username: admin           #Grafana credentials for login on grafana dashboard
+        url_password: admin           #Grafana credentials for login on grafana dashboard
